@@ -1,28 +1,30 @@
+# server/radiation_server.py
 import threading
 import time
 
 class RadiationThread(threading.Thread):
-    def __init__(self, state_dict):
+    def __init__(self, game_state):
         super().__init__()
-        self.state_dict = state_dict
+        self.game_state = game_state
         self._stop_event = threading.Event()
         self.MAX_RADIATION = 100
-        self._lock = threading.Lock()
 
     def run(self):
-        print("[RadiationThread] Subida de radiación lenta (1 punto cada 3s).")
+        print("[RadiationThread] Subida de radiación (1 punto cada 3s).")
         while not self._stop_event.is_set():
-            if self.state_dict.get('game_over', False):
-                break
+            with self.game_state.lock:
+                if self.game_state.state['game_over']:
+                    break
             time.sleep(3)
-            with self._lock:
-                rad = self.state_dict.get('radiacion', 0)
+
+            with self.game_state.lock:
+                rad = self.game_state.state['radiacion']
                 rad += 1
                 if rad >= self.MAX_RADIATION:
                     rad = self.MAX_RADIATION
-                    self.state_dict['game_over'] = True
+                    self.game_state.state['game_over'] = True
                     print("[RadiationThread] ¡Radiación crítica! Game Over.")
-                self.state_dict['radiacion'] = rad
+                self.game_state.state['radiacion'] = rad
 
     def stop(self):
         self._stop_event.set()
